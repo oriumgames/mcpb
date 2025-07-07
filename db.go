@@ -62,10 +62,6 @@ func (db *DB) LoadColumn(pos world.ChunkPos, dim world.Dimension) (*chunk.Column
 	k := dbKey{pos: pos, dim: dim}
 	col, err := db.column(k)
 	if err != nil {
-		// TODO: resolve this
-		if errors.Is(err, pebble.ErrNotFound) {
-			err = leveldb.ErrNotFound
-		}
 		return nil, fmt.Errorf("load column %v (%v): %w", pos, dim, err)
 	}
 	return col, nil
