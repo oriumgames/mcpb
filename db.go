@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 
 	"github.com/cockroachdb/pebble"
@@ -114,8 +115,16 @@ func (db *DB) column(k dbKey) (*chunk.Column, error) {
 	return col, nil
 }
 
+func (db *DB) wrappedGet(key []byte) ([]byte, io.Closer, error) {
+	val, closer, err := db.pdb.Get(key)
+	if errors.Is(err, pebble.ErrNotFound) {
+		return nil, nil, leveldb.ErrNotFound
+	}
+	return val, closer, err
+}
+
 func (db *DB) version(k dbKey) (byte, error) {
-	p, closer, err := db.pdb.Get(k.Sum(keyVersion))
+	p, closer, err := db.wrappedGet(k.Sum(keyVersion))
 	if err != nil {
 		return 0, err
 	}
@@ -128,7 +137,7 @@ func (db *DB) version(k dbKey) (byte, error) {
 }
 
 func (db *DB) biomes(k dbKey) ([]byte, error) {
-	biomes, closer, err := db.pdb.Get(k.Sum(key3DData))
+	biomes, closer, err := db.wrappedGet(k.Sum(key3DData))
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +157,7 @@ func (db *DB) subChunks(k dbKey) ([][]byte, error) {
 
 	for i := range sub {
 		y := uint8(i + (r[0] >> 4))
-		val, closer, err := db.pdb.Get(k.Sum(keySubChunkData, y))
+		val, closer, err := db.wrappedGet(k.Sum(keySubChunkData, y))
 		if errors.Is(err, pebble.ErrNotFound) {
 			continue
 		} else if err != nil {
@@ -163,7 +172,7 @@ func (db *DB) subChunks(k dbKey) ([][]byte, error) {
 
 func (db *DB) entities(k dbKey) ([]chunk.Entity, error) {
 	// https://learn.microsoft.com/en-us/minecraft/creator/documents/actorstorage
-	ids, closer, err := db.pdb.Get(append([]byte(keyEntityIdentifiers), index(k.pos, k.dim)...))
+	ids, closer, err := db.wrappedGet(append([]byte(keyEntityIdentifiers), index(k.pos, k.dim)...))
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +182,7 @@ func (db *DB) entities(k dbKey) ([]chunk.Entity, error) {
 	for i := 0; i < len(ids); i += 8 {
 		id := int64(binary.LittleEndian.Uint64(ids[i : i+8]))
 
-		data, closer, err := db.pdb.Get(entityIndex(id))
+		data, closer, err := db.wrappedGet(entityIndex(id))
 		if err != nil {
 			db.conf.Log.Error("read entity: "+err.Error(), "ID", id)
 			return nil, err
@@ -195,7 +204,7 @@ func (db *DB) entities(k dbKey) ([]chunk.Entity, error) {
 func (db *DB) blockEntities(k dbKey) ([]chunk.BlockEntity, error) {
 	var blockEntities []chunk.BlockEntity
 
-	data, closer, err := db.pdb.Get(k.Sum(keyBlockEntities))
+	data, closer, err := db.wrappedGet(k.Sum(keyBlockEntities))
 	if err != nil {
 		return blockEntities, err
 	}
@@ -216,7 +225,7 @@ func (db *DB) blockEntities(k dbKey) ([]chunk.BlockEntity, error) {
 }
 
 func (db *DB) scheduledUpdates(k dbKey) ([]chunk.ScheduledBlockUpdate, int64, error) {
-	data, closer, err := db.pdb.Get(k.Sum(keyPendingScheduledTicks))
+	data, closer, err := db.wrappedGet(k.Sum(keyPendingScheduledTicks))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -293,7 +302,7 @@ func (db *DB) storeEntities(batch *pebble.Batch, k dbKey, entities []chunk.Entit
 
 	// load the ids of the previous entities
 	var previousIDs []int64
-	digpPrev, closer, err := db.pdb.Get(idsKey)
+	digpPrev, closer, err := db.wrappedGet(idsKey)
 	if err != nil && !errors.Is(err, pebble.ErrNotFound) {
 		db.conf.Log.Error("store entities: read chunk entity IDs: " + err.Error())
 	}
