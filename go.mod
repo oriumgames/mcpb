@@ -1,4 +1,4 @@
-module github.com/prismeon/mcpb
+module github.com/oriumgames/mcpb
 
 go 1.24.4
 

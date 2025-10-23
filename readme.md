@@ -8,7 +8,7 @@ Pebble world provider for dragonfly
 
 ## Install
 ```sh
-go get github.com/prismeon/mcpb
+go get github.com/oriumgames/mcpb
 ```
 
 ## Quick Start
@@ -16,7 +16,7 @@ go get github.com/prismeon/mcpb
 package main
 
 import (
-    "github.com/prismeon/mcpb"
+    "github.com/oriumgames/mcpb"
     "github.com/df-mc/dragonfly/server"
     "log/slog"
 )
