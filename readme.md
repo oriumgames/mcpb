@@ -1,24 +1,41 @@
 # mcpb
+Pebble world provider for dragonfly
 
-a dragonfly world provider that stores level data using [pebble](https://github.com/cockroachdb/pebble)
+## Highlights
+- Uses [Pebble](https://github.com/cockroachdb/pebble) as the underlying key-value store.
+- Simple integration as a drop-in world provider.
+- Not intended for long-term persistence.
 
-(not intended for persistent storage)
-
-based on [dragonfly/world/mcdb](https://github.com/df-mc/dragonfly/tree/master/server/world/mcdb)
-
-## example usage
-```go
-conf := server.DefaultConfig()
-conf.World.SaveData = false
-
-cfg, _ := conf.Config(slog.Default())
-
-db, _ := mcpb.Open(usrConf.World.Folder)
-cfg.WorldProvider = db
-
-srv := cfg.New()
-srv.CloseOnProgramEnd()
-srv.Listen()
-
-for range srv.Accept() {}
+## Install
+```sh
+go get github.com/prismeon/mcpb
 ```
+
+## Quick Start
+```go
+package main
+
+import (
+    "github.com/prismeon/mcpb"
+    "github.com/df-mc/dragonfly/server"
+    "log/slog"
+)
+
+func main() {
+    conf := server.DefaultConfig()
+    conf.World.SaveData = false
+
+    cfg, _ := conf.Config(slog.Default())
+    db, _ := mcpb.Open(cfg.World.Folder)
+    cfg.WorldProvider = db
+
+    srv := cfg.New()
+    srv.CloseOnProgramEnd()
+    srv.Listen()
+
+    for range srv.Accept() {}
+}
+```
+
+## Acknowledgments
+This work is based on [dragonfly/world/mcdb](https://github.com/df-mc/dragonfly/tree/master/server/world/mcdb).
